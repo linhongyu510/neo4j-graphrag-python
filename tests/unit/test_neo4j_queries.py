@@ -258,12 +258,18 @@ def test_get_query_tail_ordering_no_retrieval_query() -> None:
     assert result.strip() == expected.strip()
 
 
-def test_get_hybrid_query_linear_with_alpha() -> None:
-    query = _get_hybrid_query_linear(neo4j_version_is_5_23_or_above=True, alpha=0.7)
+@pytest.mark.parametrize("neo4j_version_is_5_23_or_above", [False, True])
+def test_get_hybrid_query_linear_with_alpha(
+    neo4j_version_is_5_23_or_above: bool,
+) -> None:
+    query = _get_hybrid_query_linear(
+        neo4j_version_is_5_23_or_above=neo4j_version_is_5_23_or_above, alpha=0.7
+    )
     vector_substr = "rawScore * $alpha"
     ft_substr = "rawScore * (1 - $alpha)"
     assert vector_substr in query
     assert ft_substr in query
+    assert "UNION ALL" in query
 
 
 def test_invalid_hybrid_search_ranker_error() -> None:
@@ -437,7 +443,7 @@ class TestBuildHybridSearchClauseQueryLinear:
             node_label="Document",
         )
         assert "CALL () {" in query
-        assert "UNION" in query
+        assert "UNION ALL" in query
         assert "$alpha" in query
         assert "(1 - $alpha)" in query
         assert "sum(score)" in query

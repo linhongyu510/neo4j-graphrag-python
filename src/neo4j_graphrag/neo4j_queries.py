@@ -251,7 +251,7 @@ def _get_hybrid_query_linear(neo4j_version_is_5_23_or_above: bool, alpha: float)
         "UNWIND nodes AS n "
         "WITH n.node AS node, (n.score / vector_index_max_score) AS rawScore "
         "RETURN node, rawScore * $alpha AS score "
-        "UNION "
+        "UNION ALL "
         f"{FULL_TEXT_SEARCH_QUERY} "
         "WITH collect({node: node, score: score}) AS nodes, max(score) AS ft_index_max_score "
         "UNWIND nodes AS n "
@@ -400,8 +400,8 @@ def _build_hybrid_search_clause_query_linear(
 ) -> str:
     """Build a hybrid query with linear ranker: SEARCH for vector + procedure for fulltext.
 
-    Uses CALL subquery with UNION to combine weighted vector (SEARCH clause)
-    and fulltext (procedure) scores using $alpha parameter.
+    Uses CALL subquery with UNION ALL to preserve both weighted vector (SEARCH
+    clause) and fulltext (procedure) contributions when their scores are equal.
 
     Note: SEARCH clause only supports VECTOR INDEX, not FULLTEXT INDEX,
     so the fulltext component uses the db.index.fulltext.queryNodes procedure.
@@ -433,7 +433,7 @@ def _build_hybrid_search_clause_query_linear(
         "RETURN node, rawScore * (1 - $alpha) AS score"
     )
     return prefix_cypher_25(
-        f"CALL () {{ {vector_part} UNION {fulltext_part} }} "
+        f"CALL () {{ {vector_part} UNION ALL {fulltext_part} }} "
         "WITH node, sum(score) AS score ORDER BY score DESC LIMIT $top_k"
     )
 
